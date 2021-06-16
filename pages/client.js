@@ -1,6 +1,10 @@
 import Layout from '../components/layout'
+import { useSession } from 'next-auth/client'
 
 export default function Page () {
+  const [session, loading] = useSession();
+  console.log({session, loading});
+
   return (
     <Layout>
       <h1>Client Side Rendering</h1>
