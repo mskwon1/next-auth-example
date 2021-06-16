@@ -6,53 +6,42 @@ import Providers from "next-auth/providers"
 export default NextAuth({
   // https://next-auth.js.org/configuration/providers
   providers: [
-    Providers.Email({
-      server: process.env.EMAIL_SERVER,
-      from: process.env.EMAIL_FROM,
+    Providers.Kakao({
+      clientId: process.env.KAKAO_ID,
+      clientSecret: process.env.KAKAO_SECRET,
     }),
-    // Temporarily removing the Apple provider from the demo site as the
-    // callback URL for it needs updating due to Vercel changing domains
-    /*
-    Providers.Apple({
-      clientId: process.env.APPLE_ID,
-      clientSecret: {
-        appleId: process.env.APPLE_ID,
-        teamId: process.env.APPLE_TEAM_ID,
-        privateKey: process.env.APPLE_PRIVATE_KEY,
-        keyId: process.env.APPLE_KEY_ID,
+    // email-password와 같은 일반적인 로그인 방식을 위한 Credentials Provider
+    Providers.Credentials({
+      // The name to display on the sign in form (e.g. 'Sign in with...')
+      name: 'PUBLY',
+      // The credentials is used to generate a suitable form on the sign in page.
+      // You can specify whatever fields you are expecting to be submitted.
+      // e.g. domain, username, password, 2FA token, etc.
+      credentials: {
+        email: { label: "E-mail", type: "text", placeholder: "minsu@publy.co" },
+        password: {  label: "Password", type: "password" }
       },
-    }),
-    */
-    Providers.Facebook({
-      clientId: process.env.FACEBOOK_ID,
-      clientSecret: process.env.FACEBOOK_SECRET,
-    }),
-    Providers.GitHub({
-      clientId: process.env.GITHUB_ID,
-      clientSecret: process.env.GITHUB_SECRET,
-    }),
-    Providers.Google({
-      clientId: process.env.GOOGLE_ID,
-      clientSecret: process.env.GOOGLE_SECRET,
-    }),
-    Providers.Twitter({
-      clientId: process.env.TWITTER_ID,
-      clientSecret: process.env.TWITTER_SECRET,
-    }),
-    Providers.Auth0({
-      clientId: process.env.AUTH0_ID,
-      clientSecret: process.env.AUTH0_SECRET,
-      domain: process.env.AUTH0_DOMAIN,
-    }),
-  ],
-  // Database optional. MySQL, Maria DB, Postgres and MongoDB are supported.
-  // https://next-auth.js.org/configuration/databases
-  //
-  // Notes:
-  // * You must install an appropriate node_module for your database
-  // * The Email provider requires a database (OAuth providers do not)
-  database: process.env.DATABASE_URL,
+      async authorize(credentials, req) {
+        // Add logic here to look up the user from the credentials supplied
+        const { email, password } = credentials;
 
+        // 여기서 게이트웨이로 로그인 요청을 보내서 accessToken을 받아오는 등의 행동을 할 수 있음
+        const user = await validateCredentials(email, password);
+        console.log({ email, password, user });
+
+        if (user) {
+          // Any object returned will be saved in `user` property of the JWT
+          return user
+        } else {
+          // If you return null or false then the credentials will be rejected
+          return null
+          // You can also Reject this callback with an Error or with a URL:
+          // throw new Error('error message') // Redirect to error page
+          // throw '/path/to/redirect'        // Redirect to a URL
+        }
+      }
+    })
+  ],
   // The secret should be set to a reasonably long random string.
   // It is used to sign cookies and to sign and encrypt JSON Web Tokens, unless
   // a separate secret is defined explicitly for encrypting the JWT.
@@ -80,7 +69,7 @@ export default NextAuth({
     // A secret to use for key generation (you should set this explicitly)
     secret: process.env.JWT_SECRET,
     // Set to true to use encryption (default: false)
-    // encryption: true,
+    encryption: false,
     // You can define your own encode/decode functions for signing and encryption
     // if you want to override the default behaviour.
     // encode: async ({ secret, token, maxAge }) => {},
@@ -104,20 +93,109 @@ export default NextAuth({
   // when an action is performed.
   // https://next-auth.js.org/configuration/callbacks
   callbacks: {
-    // async signIn(user, account, profile) { return true },
-    // async redirect(url, baseUrl) { return baseUrl },
-    // async session(session, user) { return session },
-    // async jwt(token, user, account, profile, isNewUser) { return token }
+    // 사용자 로그인 여부를 결정
+    async signIn(user, account, profile) {
+      /*
+        Credentials Provider 사용시
+        user 객체는 authroization 콜백에서 반환한 것
+        Profile은 HTTP POST 요청의 raw body
+      */
+      console.log({ user, profile });
+      try {
+          return true;
+      } catch (e) {
+          return false;
+      }
+    },
+    // 사용자가 콜백 URL로 리다이렉트 될 때 호출(로그인/로그아웃)
+    async redirect(url, baseUrl) {
+      // 콜백 URL로 지정된 url, 사이트의 기본 baseUrl을 파라미터로 받아서, 리다이렉트 경로 지정 가능
+      return url.startsWith(baseUrl)
+        ? url
+        : baseUrl
+    },
+    // 세션이 체크될 때마다 호출, jwt() 콜백이 먼저 호출됨
+    async session(session, token) {
+      try {
+        // 토큰에 저장된 유저 데이터를 그대로 갖다 쓰도록 할 수 있음
+        session.user = token.user;
+
+        return session;
+      } catch (e) {
+        return true;
+      }
+    },
+    // JWT가 만들어지거나(로그인 등), 업데이트 되었을 때 호출
+    async jwt(token, user, account, profile, isNewUser) {
+      /* 
+        user, account, profile, isNewUser의 경우
+        Provider에 따라서 undefined일 수 있음
+      */
+      if (!token.user) {
+        token.user = user;
+      }
+
+      return token
+    },
   },
 
   // Events are useful for logging
   // https://next-auth.js.org/configuration/events
-  events: {},
+  events: {
+    async signIn(message) {
+      console.log('After sign in');
+      // console.log(message);
+    },
+    async signOut(message) {
+      console.log('After sign out');
+      // console.log(message);
+    },
+    async session(message) {
+      console.log('After end of request')
+      // console.log(message);
+    },
+    async error(message) {
+      console.log('Error');
+      // console.log(message);
+    }
+  },
   
   // You can set the theme to 'light', 'dark' or use 'auto' to default to the
   // whatever prefers-color-scheme is set to in the browser. Default is 'auto'
   theme: 'light',
 
   // Enable debug messages in the console if you are having problems
-  debug: false,
+  debug: true,
 })
+
+const users = [
+  {
+    id: 1,
+    email: 'minsu@publy.co',
+    age: 27
+  }
+]
+
+async function validateCredentials(email, password) {
+  if (true) {
+    return retreiveUserByEmail(email);
+  }
+
+  return null;
+}
+
+async function retreiveUserByEmail(email) {
+  const filteredUsers = users.filter(function (user) {
+    return user.email === email;
+  });
+
+  if (!filteredUsers) {
+    return null;
+  }
+
+  if (filteredUsers.length > 0) {
+    return filteredUsers[0];
+  }
+
+  return null;
+}
