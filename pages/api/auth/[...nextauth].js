@@ -99,8 +99,19 @@ export default NextAuth({
         Credentials Provider 사용시
         user 객체는 authroization 콜백에서 반환한 것
         Profile은 HTTP POST 요청의 raw body
+
+        다른 OAuth Provider 사용시 해당 서비스에서
+        제공하는 값들로 채워져서 옴
+        
+        단, 인가코드를 받아오는 걸로 끝나는게 아니라 
+        토큰을 받아오는 과정또한 포함됩니다
+
+        받아온 데이터들을 통해 게이트웨이로
+        소셜계정 - 기존계정 연결하는 요청을 해야할듯
+
+        account 객체에 어떤 provider인지 나와있음
       */
-      console.log({ user, profile });
+      console.log({ user, account, profile });
       try {
           return true;
       } catch (e) {
@@ -165,7 +176,7 @@ export default NextAuth({
   theme: 'light',
 
   // Enable debug messages in the console if you are having problems
-  debug: true,
+  debug: false,
 })
 
 const users = [
