@@ -13,7 +13,7 @@ export default NextAuth({
     // email-password와 같은 일반적인 로그인 방식을 위한 Credentials Provider
     Providers.Credentials({
       // The name to display on the sign in form (e.g. 'Sign in with...')
-      name: 'PUBLY',
+      name: 'Credentials',
       // The credentials is used to generate a suitable form on the sign in page.
       // You can specify whatever fields you are expecting to be submitted.
       // e.g. domain, username, password, 2FA token, etc.
@@ -97,7 +97,7 @@ export default NextAuth({
     async signIn(user, account, profile) {
       /*
         Credentials Provider 사용시
-        user 객체는 authroization 콜백에서 반환한 것
+        user 객체는 authorize 콜백에서 반환한 것
         Profile은 HTTP POST 요청의 raw body
 
         다른 OAuth Provider 사용시 해당 서비스에서
